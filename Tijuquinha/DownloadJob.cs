@@ -1,13 +1,8 @@
-using System.Net.Http;
 using Quartz;
-using System.IO;
-using System.Threading.Tasks;
 using Google.Cloud.BigQuery.V2;
-using System.Data;
 using ClosedXML.Excel;
 using System.Diagnostics;
 using Google.Apis.Auth.OAuth2;
-using Google.Cloud.BigQuery.V2;
 using Tijuquinha.Services;
 using System.Text;
 
