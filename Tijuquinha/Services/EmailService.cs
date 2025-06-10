@@ -1,5 +1,5 @@
 using System.Net.Mail;
-using Microsoft.Extensions.Logging;
+using Serilog;
 
 namespace Tijuquinha.Services
 {

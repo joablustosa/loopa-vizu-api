@@ -11,11 +11,10 @@
 using System;
 using System.Reflection;
 
-[assembly: Microsoft.Extensions.Configuration.UserSecrets.UserSecretsIdAttribute("dotnet-Tijuquinha-1268db97-18b5-463d-aaca-744ef7037c1e")]
 [assembly: System.Reflection.AssemblyCompanyAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a7f7487339eddf4da914c13d129ddbd86a18baba")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a77570e09e5d67a6ea3cdc28abd3e6dc0d4c7f4e")]
 [assembly: System.Reflection.AssemblyProductAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

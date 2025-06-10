@@ -1,23 +1,23 @@
 {
   "format": 1,
   "restore": {
-    "C:\\projetos_one\\automacao\\Tijuquinha\\Tijuquinha\\Tijuquinha.csproj": {}
+    "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Tijuquinha.csproj": {}
   },
   "projects": {
-    "C:\\projetos_one\\automacao\\Tijuquinha\\Tijuquinha\\Tijuquinha.csproj": {
+    "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Tijuquinha.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\projetos_one\\automacao\\Tijuquinha\\Tijuquinha\\Tijuquinha.csproj",
+        "projectUniqueName": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Tijuquinha.csproj",
         "projectName": "Tijuquinha",
-        "projectPath": "C:\\projetos_one\\automacao\\Tijuquinha\\Tijuquinha\\Tijuquinha.csproj",
-        "packagesPath": "C:\\Users\\jferreira.adm\\.nuget\\packages\\",
-        "outputPath": "C:\\projetos_one\\automacao\\Tijuquinha\\Tijuquinha\\obj\\",
+        "projectPath": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Tijuquinha.csproj",
+        "packagesPath": "C:\\Users\\Joab\\.nuget\\packages\\",
+        "outputPath": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\obj\\",
         "projectStyle": "PackageReference",
         "fallbackFolders": [
           "C:\\Program Files (x86)\\Microsoft Visual Studio\\Shared\\NuGetPackages"
         ],
         "configFilePaths": [
-          "C:\\Users\\jferreira.adm\\AppData\\Roaming\\NuGet\\NuGet.Config",
+          "C:\\Users\\Joab\\AppData\\Roaming\\NuGet\\NuGet.Config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.FallbackLocation.config",
           "C:\\Program Files (x86)\\NuGet\\Config\\Microsoft.VisualStudio.Offline.config"
         ],
@@ -26,7 +26,6 @@
         ],
         "sources": {
           "C:\\Program Files (x86)\\Microsoft SDKs\\NuGetPackages\\": {},
-          "C:\\nuget.local": {},
           "https://api.nuget.org/v3/index.json": {}
         },
         "frameworks": {
@@ -90,6 +89,10 @@
             "Quartz.Extensions.Hosting": {
               "target": "Package",
               "version": "[3.14.0, )"
+            },
+            "Serilog": {
+              "target": "Package",
+              "version": "[4.3.0, )"
             }
           },
           "imports": [
@@ -108,7 +111,7 @@
               "privateAssets": "all"
             }
           },
-          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.203/PortableRuntimeIdentifierGraph.json"
+          "runtimeIdentifierGraphPath": "C:\\Program Files\\dotnet\\sdk\\9.0.201/PortableRuntimeIdentifierGraph.json"
         }
       }
     }
