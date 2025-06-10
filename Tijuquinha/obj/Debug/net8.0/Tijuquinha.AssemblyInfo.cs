@@ -15,7 +15,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Debug")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+a7f7487339eddf4da914c13d129ddbd86a18baba")]
 [assembly: System.Reflection.AssemblyProductAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyTitleAttribute("Tijuquinha")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]
