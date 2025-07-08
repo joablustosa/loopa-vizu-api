@@ -3,10 +3,6 @@
   "WorkspaceRootPath": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\",
   "Documents": [
     {
-      "AbsoluteMoniker": "D:0:0:{6BA50221-03A0-448B-8735-9285B7EB83F2}|Tijuquinha\\Tijuquinha.csproj|c:\\users\\joab\\documents\\github\\loopa-vizu-api\\tijuquinha\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
-      "RelativeMoniker": "D:0:0:{6BA50221-03A0-448B-8735-9285B7EB83F2}|Tijuquinha\\Tijuquinha.csproj|solutionrelative:tijuquinha\\program.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
-    },
-    {
       "AbsoluteMoniker": "D:0:0:{6BA50221-03A0-448B-8735-9285B7EB83F2}|Tijuquinha\\Tijuquinha.csproj|c:\\users\\joab\\documents\\github\\loopa-vizu-api\\tijuquinha\\downloadjob.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}",
       "RelativeMoniker": "D:0:0:{6BA50221-03A0-448B-8735-9285B7EB83F2}|Tijuquinha\\Tijuquinha.csproj|solutionrelative:tijuquinha\\downloadjob.cs||{A6C744A8-0E4A-4FC6-886A-064283054674}"
     }
@@ -18,32 +14,19 @@
       "DocumentGroups": [
         {
           "DockedWidth": 200,
-          "SelectedChildIndex": 1,
+          "SelectedChildIndex": 0,
           "Children": [
             {
               "$type": "Document",
-              "DocumentIndex": 1,
+              "DocumentIndex": 0,
               "Title": "DownloadJob.cs",
               "DocumentMoniker": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\DownloadJob.cs",
               "RelativeDocumentMoniker": "Tijuquinha\\DownloadJob.cs",
               "ToolTip": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\DownloadJob.cs",
               "RelativeToolTip": "Tijuquinha\\DownloadJob.cs",
-              "ViewState": "AgIAAP4AAAAAAAAAAIA5wP0BAAAsAAAAAAAAAA==",
+              "ViewState": "AgIAAAAAAAAAAAAAAAAAADkBAAAzAAAAAAAAAA==",
               "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
               "WhenOpened": "2025-06-10T21:24:00.234Z",
-              "EditorCaption": ""
-            },
-            {
-              "$type": "Document",
-              "DocumentIndex": 0,
-              "Title": "Program.cs",
-              "DocumentMoniker": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Program.cs",
-              "RelativeDocumentMoniker": "Tijuquinha\\Program.cs",
-              "ToolTip": "C:\\Users\\Joab\\Documents\\GitHub\\loopa-vizu-api\\Tijuquinha\\Program.cs",
-              "RelativeToolTip": "Tijuquinha\\Program.cs",
-              "ViewState": "AgIAAAMAAAAAAAAAAAAAAAoAAAAXAAAAAAAAAA==",
-              "Icon": "ae27a6b0-e345-4288-96df-5eaf394ee369.000738|",
-              "WhenOpened": "2025-06-10T20:31:16.616Z",
               "EditorCaption": ""
             }
           ]

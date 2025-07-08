@@ -15,242 +15,250 @@ namespace Tijuquinha
         private const string DownloadUrl = "https://www.arcgis.com/sharing/rest/content/items/8ffe62ad3b2f42e49814bf941654ea6c/data";
         private const string DownloadFolder = "download";
         private const string BigQueryQuery = @"
-                                                WITH
-                                                -- 1) Transações unificadas filtradas para fevereiro e março de 2025
-                                                transacoes AS (
-                                                  SELECT
-                                                    id_transacao,
-                                                    TIMESTAMP(datetime_transacao) AS datetime_transacao,
-                                                    CAST(id_veiculo AS STRING) AS id_veiculo
-                                                  FROM `rj-smtr.br_rj_riodejaneiro_bilhetagem.transacao_riocard`
-                                                  WHERE DATE(datetime_transacao) >= '2025-04-02'
-                                                    AND DATE(datetime_transacao) < '2025-06-03'
+                                         -- 1) Datas de filtro e transações unificadas
+                                        WITH 
+                                        datas AS (
+                                          SELECT 
+                                            DATE datas.data_inicio AS data_inicio, 
+                                            DATE datas.data_fim AS data_fim
+                                        ),
+                                        transacoes AS (
+                                          SELECT
+                                            id_transacao,
+                                            TIMESTAMP(datetime_transacao) AS datetime_transacao,
+                                            CAST(id_veiculo AS STRING) AS id_veiculo
+                                          FROM rj-smtr.br_rj_riodejaneiro_bilhetagem.transacao_riocard,
+                                               datas
+                                          WHERE DATE(datetime_transacao) >= datas.data_inicio
+                                            AND DATE(datetime_transacao) < datas.data_fim
+
+                                          UNION ALL
+
+                                          SELECT
+                                            id_transacao,
+                                            TIMESTAMP(datetime_transacao) AS datetime_transacao,
+                                            CAST(id_veiculo AS STRING) AS id_veiculo
+                                          FROM rj-smtr.br_rj_riodejaneiro_bilhetagem.transacao,
+                                               datas
+                                          WHERE DATE(datetime_transacao) >= datas.data_inicio
+                                            AND DATE(datetime_transacao) < datas.data_fim
+                                        )
+
+                                         -- 2) Viagens filtradas, com normalização do id_veiculo, para fevereiro e março de 2025,
+                                         -- filtradas pelo servico_realizado conforme a lista fornecida
+                                         viagens_filtradas AS (
+                                           SELECT
+                                             id_viagem,
+                                             COALESCE(
+                                               SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S.%f', CAST(datetime_partida AS STRING)),
+                                               SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', CAST(datetime_partida AS STRING))
+                                             ) AS datetime_partida,
+                                             COALESCE(
+                                               SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S.%f', CAST(datetime_chegada AS STRING)),
+                                               SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', CAST(datetime_chegada AS STRING))
+                                             ) AS datetime_chegada,
+                                             sentido,
+                                             servico_realizado,
+                                             REGEXP_EXTRACT(id_veiculo, r'(\d+)') AS id_veiculo_normalizado
+                                           FROM rj-smtr.projeto_subsidio_sppo.viagem_completa
+                                           WHERE DATE(datetime_partida) >= datas.data_inicio
+                                             AND DATE(datetime_partida) < datas.data_fim
+                                             AND servico_realizado IN (
+                                               '165', '220', '229', '301', '302', '315', '435', '448', '584', '603', '607', '608', '645',
+                                               '702', '805', '810', '865', 'SN302', 'SN810', 'SP805', 'SP810', '117', '422', 'SN422',
+                                               '583', '585', '497', 'SN497', '104', '108', '109', '110', '112', '209', 'SN104', 'SN209',
+                                               'SN309', '362', '443', '498', 'SR362', '275', '472', '474', '485', 'SN474', '415', 'SN415',
+                                               '426', '409', '416', '410', '626', '239', '432', '433', 'SN433', '238', 'SN238', '863',
+                                               'SV863', '862', '990', '309', '552', '957', '878', 'SN878', 'SV878', '361', 'SP315', '553',
+                                               '181', '2334', '2335', 'SN554', '352', '2337', '2338', '2802', '2803', '2804', '554', '338',
+                                               '343', '348', '380', '483', '954', 'SN483', 'SN954', '2345', '300', '388', '393', '394',
+                                               '397', '486', '961', 'SN388', 'SN393', 'SN397', '292', '342', 'SP343', 'SP553', '349',
+                                               '378', '384', '399', 'SN399', '539', '558', '444', '157', '557', 'SPA550', 'SP309', '105',
+                                               '538', '548', '439', 'SN538', '518', 'SP404', 'SN636', '636', '606', 'SV606', '653', '621',
+                                               '363', 'SN363', '601', '685', 'SN685', 'SVA685', 'SVB685', '353', 'SN353', '622', '652',
+                                               '651', '217', '565', 'SN565', '371', '678', '306', '917', '783', 'SP783', '2111', '779',
+                                               'SN779', 'SV779', '844', '550', '555', 'SPB550', '613', '368', 'SN368', '881', '611'
+                                             )
+                                         ),
+
+                                         -- 3) Match direto: transações que caem dentro do intervalo (partida ≤ transação ≤ chegada)
+                                         direct_matches AS (
+                                           SELECT
+                                             t.id_transacao,
+                                             t.datetime_transacao,
+                                             t.id_veiculo,
+                                             v.id_viagem,
+                                             v.sentido,
+                                             v.servico_realizado,
+                                             v.datetime_partida,
+                                             v.datetime_chegada,
+                                             ROW_NUMBER() OVER (
+                                               PARTITION BY t.id_transacao
+                                               ORDER BY v.datetime_partida
+                                             ) AS rn
+                                           FROM transacoes t
+                                           JOIN viagens_filtradas v
+                                             ON v.id_veiculo_normalizado = t.id_veiculo
+                                             AND t.datetime_transacao BETWEEN v.datetime_partida AND v.datetime_chegada
+                                         ),
+
+                                         -- 4) Transações sem match direto (fora do intervalo)
+                                         no_direct_matches AS (
+                                           SELECT t.*
+                                           FROM transacoes t
+                                           LEFT JOIN direct_matches dm
+                                             ON t.id_transacao = dm.id_transacao
+                                             AND dm.rn = 1
+                                           WHERE dm.id_viagem IS NULL
+                                         ),
+
+                                         -- 5) Próxima viagem: para transações sem match direto, busca a viagem cuja partida seja maior que a transação
+                                         next_trip_candidates AS (
+                                           SELECT
+                                             ndm.id_transacao,
+                                             ndm.datetime_transacao,
+                                             ndm.id_veiculo,
+                                             v.id_viagem,
+                                             v.sentido,
+                                             v.servico_realizado,
+                                             v.datetime_partida,
+                                             v.datetime_chegada,
+                                             ROW_NUMBER() OVER (
+                                               PARTITION BY ndm.id_transacao
+                                               ORDER BY v.datetime_partida
+                                             ) AS rn
+                                           FROM no_direct_matches ndm
+                                           JOIN viagens_filtradas v
+                                             ON v.id_veiculo_normalizado = ndm.id_veiculo
+                                             AND v.datetime_partida > ndm.datetime_transacao
+                                         ),
+
+                                         -- 6) Transações que não encontraram nem intervalo nem próxima viagem
+                                         no_next_trip AS (
+                                           SELECT ndm.*
+                                           FROM no_direct_matches ndm
+                                           LEFT JOIN next_trip_candidates ntc
+                                             ON ndm.id_transacao = ntc.id_transacao
+                                             AND ntc.rn = 1
+                                           WHERE ntc.id_viagem IS NULL
+                                         ),
+
+                                         -- 7) Última viagem: para transações sem match e sem próxima viagem, busca a viagem cuja partida seja menor que a transação (a mais recente)
+                                         last_trip_candidates AS (
+                                           SELECT
+                                             nnt.id_transacao,
+                                             nnt.datetime_transacao,
+                                             nnt.id_veiculo,
+                                             v.id_viagem,
+                                             v.sentido,
+                                             v.servico_realizado,
+                                             v.datetime_partida,
+                                             v.datetime_chegada,
+                                             ROW_NUMBER() OVER (
+                                               PARTITION BY nnt.id_transacao
+                                               ORDER BY v.datetime_partida DESC
+                                             ) AS rn
+                                           FROM no_next_trip nnt
+                                           JOIN viagens_filtradas v
+                                             ON v.id_veiculo_normalizado = nnt.id_veiculo
+                                             AND v.datetime_partida < nnt.datetime_transacao
+                                         ),
+
+                                         -- 8) Consolida todas as transações alocadas (match direto / próxima viagem / última viagem)
+                                         final_alocado AS (
+                                           SELECT
+                                             id_transacao,
+                                             datetime_transacao,
+                                             id_veiculo,
+                                             id_viagem,
+                                             sentido,
+                                             servico_realizado,
+                                             datetime_partida,
+                                             datetime_chegada
+                                           FROM direct_matches
+                                           WHERE rn = 1
   
-                                                  UNION ALL
+                                           UNION ALL
   
-                                                  SELECT
-                                                    id_transacao,
-                                                    TIMESTAMP(datetime_transacao) AS datetime_transacao,
-                                                    CAST(id_veiculo AS STRING) AS id_veiculo
-                                                  FROM `rj-smtr.br_rj_riodejaneiro_bilhetagem.transacao`
-                                                  WHERE DATE(datetime_transacao) >= '2025-04-02'
-                                                    AND DATE(datetime_transacao) < '2025-06-03'
-                                                ),
-
-                                                -- 2) Viagens filtradas, com normalização do id_veiculo, para fevereiro e março de 2025,
-                                                -- filtradas pelo servico_realizado conforme a lista fornecida
-                                                viagens_filtradas AS (
-                                                  SELECT
-                                                    id_viagem,
-                                                    COALESCE(
-                                                      SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S.%f', CAST(datetime_partida AS STRING)),
-                                                      SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', CAST(datetime_partida AS STRING))
-                                                    ) AS datetime_partida,
-                                                    COALESCE(
-                                                      SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S.%f', CAST(datetime_chegada AS STRING)),
-                                                      SAFE.PARSE_TIMESTAMP('%Y-%m-%d %H:%M:%S', CAST(datetime_chegada AS STRING))
-                                                    ) AS datetime_chegada,
-                                                    sentido,
-                                                    servico_realizado,
-                                                    REGEXP_EXTRACT(id_veiculo, r'(\d+)') AS id_veiculo_normalizado
-                                                  FROM `rj-smtr.projeto_subsidio_sppo.viagem_completa`
-                                                  WHERE DATE(datetime_partida) >= '2025-04-02'
-                                                    AND DATE(datetime_partida) < '2025-06-03'
-                                                    AND servico_realizado IN (
-                                                      '165', '220', '229', '301', '302', '315', '435', '448', '584', '603', '607', '608', '645',
-                                                      '702', '805', '810', '865', 'SN302', 'SN810', 'SP805', 'SP810', '117', '422', 'SN422',
-                                                      '583', '585', '497', 'SN497', '104', '108', '109', '110', '112', '209', 'SN104', 'SN209',
-                                                      'SN309', '362', '443', '498', 'SR362', '275', '472', '474', '485', 'SN474', '415', 'SN415',
-                                                      '426', '409', '416', '410', '626', '239', '432', '433', 'SN433', '238', 'SN238', '863',
-                                                      'SV863', '862', '990', '309', '552', '957', '878', 'SN878', 'SV878', '361', 'SP315', '553',
-                                                      '181', '2334', '2335', 'SN554', '352', '2337', '2338', '2802', '2803', '2804', '554', '338',
-                                                      '343', '348', '380', '483', '954', 'SN483', 'SN954', '2345', '300', '388', '393', '394',
-                                                      '397', '486', '961', 'SN388', 'SN393', 'SN397', '292', '342', 'SP343', 'SP553', '349',
-                                                      '378', '384', '399', 'SN399', '539', '558', '444', '157', '557', 'SPA550', 'SP309', '105',
-                                                      '538', '548', '439', 'SN538', '518', 'SP404', 'SN636', '636', '606', 'SV606', '653', '621',
-                                                      '363', 'SN363', '601', '685', 'SN685', 'SVA685', 'SVB685', '353', 'SN353', '622', '652',
-                                                      '651', '217', '565', 'SN565', '371', '678', '306', '917', '783', 'SP783', '2111', '779',
-                                                      'SN779', 'SV779', '844', '550', '555', 'SPB550', '613', '368', 'SN368', '881', '611'
-                                                    )
-                                                ),
-
-                                                -- 3) Match direto: transações que caem dentro do intervalo (partida ≤ transação ≤ chegada)
-                                                direct_matches AS (
-                                                  SELECT
-                                                    t.id_transacao,
-                                                    t.datetime_transacao,
-                                                    t.id_veiculo,
-                                                    v.id_viagem,
-                                                    v.sentido,
-                                                    v.servico_realizado,
-                                                    v.datetime_partida,
-                                                    v.datetime_chegada,
-                                                    ROW_NUMBER() OVER (
-                                                      PARTITION BY t.id_transacao
-                                                      ORDER BY v.datetime_partida
-                                                    ) AS rn
-                                                  FROM transacoes t
-                                                  JOIN viagens_filtradas v
-                                                    ON v.id_veiculo_normalizado = t.id_veiculo
-                                                    AND t.datetime_transacao BETWEEN v.datetime_partida AND v.datetime_chegada
-                                                ),
-
-                                                -- 4) Transações sem match direto (fora do intervalo)
-                                                no_direct_matches AS (
-                                                  SELECT t.*
-                                                  FROM transacoes t
-                                                  LEFT JOIN direct_matches dm
-                                                    ON t.id_transacao = dm.id_transacao
-                                                    AND dm.rn = 1
-                                                  WHERE dm.id_viagem IS NULL
-                                                ),
-
-                                                -- 5) Próxima viagem: para transações sem match direto, busca a viagem cuja partida seja maior que a transação
-                                                next_trip_candidates AS (
-                                                  SELECT
-                                                    ndm.id_transacao,
-                                                    ndm.datetime_transacao,
-                                                    ndm.id_veiculo,
-                                                    v.id_viagem,
-                                                    v.sentido,
-                                                    v.servico_realizado,
-                                                    v.datetime_partida,
-                                                    v.datetime_chegada,
-                                                    ROW_NUMBER() OVER (
-                                                      PARTITION BY ndm.id_transacao
-                                                      ORDER BY v.datetime_partida
-                                                    ) AS rn
-                                                  FROM no_direct_matches ndm
-                                                  JOIN viagens_filtradas v
-                                                    ON v.id_veiculo_normalizado = ndm.id_veiculo
-                                                    AND v.datetime_partida > ndm.datetime_transacao
-                                                ),
-
-                                                -- 6) Transações que não encontraram nem intervalo nem próxima viagem
-                                                no_next_trip AS (
-                                                  SELECT ndm.*
-                                                  FROM no_direct_matches ndm
-                                                  LEFT JOIN next_trip_candidates ntc
-                                                    ON ndm.id_transacao = ntc.id_transacao
-                                                    AND ntc.rn = 1
-                                                  WHERE ntc.id_viagem IS NULL
-                                                ),
-
-                                                -- 7) Última viagem: para transações sem match e sem próxima viagem, busca a viagem cuja partida seja menor que a transação (a mais recente)
-                                                last_trip_candidates AS (
-                                                  SELECT
-                                                    nnt.id_transacao,
-                                                    nnt.datetime_transacao,
-                                                    nnt.id_veiculo,
-                                                    v.id_viagem,
-                                                    v.sentido,
-                                                    v.servico_realizado,
-                                                    v.datetime_partida,
-                                                    v.datetime_chegada,
-                                                    ROW_NUMBER() OVER (
-                                                      PARTITION BY nnt.id_transacao
-                                                      ORDER BY v.datetime_partida DESC
-                                                    ) AS rn
-                                                  FROM no_next_trip nnt
-                                                  JOIN viagens_filtradas v
-                                                    ON v.id_veiculo_normalizado = nnt.id_veiculo
-                                                    AND v.datetime_partida < nnt.datetime_transacao
-                                                ),
-
-                                                -- 8) Consolida todas as transações alocadas (match direto / próxima viagem / última viagem)
-                                                final_alocado AS (
-                                                  SELECT
-                                                    id_transacao,
-                                                    datetime_transacao,
-                                                    id_veiculo,
-                                                    id_viagem,
-                                                    sentido,
-                                                    servico_realizado,
-                                                    datetime_partida,
-                                                    datetime_chegada
-                                                  FROM direct_matches
-                                                  WHERE rn = 1
+                                           SELECT
+                                             id_transacao,
+                                             datetime_transacao,
+                                             id_veiculo,
+                                             id_viagem,
+                                             sentido,
+                                             servico_realizado,
+                                             datetime_partida,
+                                             datetime_chegada
+                                           FROM next_trip_candidates
+                                           WHERE rn = 1
   
-                                                  UNION ALL
+                                           UNION ALL
   
-                                                  SELECT
-                                                    id_transacao,
-                                                    datetime_transacao,
-                                                    id_veiculo,
-                                                    id_viagem,
-                                                    sentido,
-                                                    servico_realizado,
-                                                    datetime_partida,
-                                                    datetime_chegada
-                                                  FROM next_trip_candidates
-                                                  WHERE rn = 1
-  
-                                                  UNION ALL
-  
-                                                  SELECT
-                                                    id_transacao,
-                                                    datetime_transacao,
-                                                    id_veiculo,
-                                                    id_viagem,
-                                                    sentido,
-                                                    servico_realizado,
-                                                    datetime_partida,
-                                                    datetime_chegada
-                                                  FROM last_trip_candidates
-                                                  WHERE rn = 1
-                                                ),
+                                           SELECT
+                                             id_transacao,
+                                             datetime_transacao,
+                                             id_veiculo,
+                                             id_viagem,
+                                             sentido,
+                                             servico_realizado,
+                                             datetime_partida,
+                                             datetime_chegada
+                                           FROM last_trip_candidates
+                                           WHERE rn = 1
+                                         ),
 
-                                                -- 9) Agregação das viagens, considerando todas as viagens (mesmo sem transações)
-                                                agg_viagens AS (
-                                                  SELECT
-                                                    DATE(datetime_partida) AS data,
-                                                    servico_realizado,
-                                                    sentido,
-                                                    COUNT(DISTINCT id_viagem) AS quantidade_viagens
-                                                  FROM viagens_filtradas
-                                                  GROUP BY data, servico_realizado, sentido
-                                                ),
+                                         -- 9) Agregação das viagens, considerando todas as viagens (mesmo sem transações)
+                                         agg_viagens AS (
+                                           SELECT
+                                             DATE(datetime_partida) AS data,
+                                             servico_realizado,
+                                             sentido,
+                                             COUNT(DISTINCT id_viagem) AS quantidade_viagens
+                                           FROM viagens_filtradas
+                                           GROUP BY data, servico_realizado, sentido
+                                         ),
 
-                                                -- 10) Agregação das transações alocadas
-                                                agg_transacoes AS (
-                                                  SELECT
-                                                    DATE(datetime_transacao) AS data,
-                                                    servico_realizado,
-                                                    sentido,
-                                                    COUNT(DISTINCT id_transacao) AS quantidade_transacoes
-                                                  FROM final_alocado
-                                                  GROUP BY data, servico_realizado, sentido
-                                                ),
+                                         -- 10) Agregação das transações alocadas
+                                         agg_transacoes AS (
+                                           SELECT
+                                             DATE(datetime_transacao) AS data,
+                                             servico_realizado,
+                                             sentido,
+                                             COUNT(DISTINCT id_transacao) AS quantidade_transacoes
+                                           FROM final_alocado
+                                           GROUP BY data, servico_realizado, sentido
+                                         ),
 
-                                                -- 11) Agregação dos veículos utilizados (a partir das viagens)
-                                                agg_veiculos AS (
-                                                  SELECT
-                                                    DATE(datetime_partida) AS data,
-                                                    servico_realizado,
-                                                    sentido,
-                                                    COUNT(DISTINCT id_veiculo_normalizado) AS quantidade_veiculos
-                                                  FROM viagens_filtradas
-                                                  GROUP BY data, servico_realizado, sentido
-                                                )
+                                         -- 11) Agregação dos veículos utilizados (a partir das viagens)
+                                         agg_veiculos AS (
+                                           SELECT
+                                             DATE(datetime_partida) AS data,
+                                             servico_realizado,
+                                             sentido,
+                                             COUNT(DISTINCT id_veiculo_normalizado) AS quantidade_veiculos
+                                           FROM viagens_filtradas
+                                           GROUP BY data, servico_realizado, sentido
+                                         )
 
-                                                -- 12) Junta as agregações, garantindo que viagens sem transações também sejam consideradas
-                                                SELECT
-                                                  COALESCE(v.data, t.data, ve.data) AS data,
-                                                  COALESCE(v.servico_realizado, t.servico_realizado, ve.servico_realizado) AS servico_realizado,
-                                                  COALESCE(v.sentido, t.sentido, ve.sentido) AS sentido,
-                                                  v.quantidade_viagens,
-                                                  IFNULL(t.quantidade_transacoes, 0) AS quantidade_transacoes,
-                                                  ve.quantidade_veiculos
-                                                FROM agg_viagens v
-                                                FULL OUTER JOIN agg_transacoes t
-                                                  ON v.data = t.data
-                                                  AND v.servico_realizado = t.servico_realizado
-                                                  AND v.sentido = t.sentido
-                                                FULL OUTER JOIN agg_veiculos ve
-                                                  ON COALESCE(v.data, t.data) = ve.data
-                                                  AND COALESCE(v.servico_realizado, t.servico_realizado) = ve.servico_realizado
-                                                  AND COALESCE(v.sentido, t.sentido) = ve.sentido
-                                                ORDER BY data, servico_realizado, sentido";
+                                         -- 12) Junta as agregações, garantindo que viagens sem transações também sejam consideradas
+                                         SELECT
+                                           COALESCE(v.data, t.data, ve.data) AS data,
+                                           COALESCE(v.servico_realizado, t.servico_realizado, ve.servico_realizado) AS servico_realizado,
+                                           COALESCE(v.sentido, t.sentido, ve.sentido) AS sentido,
+                                           v.quantidade_viagens,
+                                           IFNULL(t.quantidade_transacoes, 0) AS quantidade_transacoes,
+                                           ve.quantidade_veiculos
+                                         FROM agg_viagens v
+                                         FULL OUTER JOIN agg_transacoes t
+                                           ON v.data = t.data
+                                           AND v.servico_realizado = t.servico_realizado
+                                           AND v.sentido = t.sentido
+                                         FULL OUTER JOIN agg_veiculos ve
+                                           ON COALESCE(v.data, t.data) = ve.data
+                                           AND COALESCE(v.servico_realizado, t.servico_realizado) = ve.servico_realizado
+                                           AND COALESCE(v.sentido, t.sentido) = ve.sentido
+                                         ORDER BY data, servico_realizado, sentido
+";
 
         public DownloadJob(ILogger<DownloadJob> logger, EmailService emailService)
         {
@@ -262,37 +270,44 @@ namespace Tijuquinha
         {
             try
             {
-                _logger.LogInformation("Iniciando download do arquivo...");
+                //_logger.LogInformation("Iniciando download do arquivo...");
 
-                if (!Directory.Exists(DownloadFolder))
-                {
-                    Directory.CreateDirectory(DownloadFolder);
-                }
+                //if (!Directory.Exists(DownloadFolder))
+                //{
+                //    Directory.CreateDirectory(DownloadFolder);
+                //}
 
-                using var httpClient = new HttpClient();
-                var response = await httpClient.GetAsync(DownloadUrl);
-                response.EnsureSuccessStatusCode();
+                //using var httpClient = new HttpClient();
+                //var response = await httpClient.GetAsync(DownloadUrl);
+                //response.EnsureSuccessStatusCode();
 
-                var fileName = Path.Combine(DownloadFolder, "dados.zip");
-                using (var fileStream = File.Create(fileName))
-                {
-                    await response.Content.CopyToAsync(fileStream);
-                }
+                //var fileName = Path.Combine(DownloadFolder, "dados.zip");
+                //using (var fileStream = File.Create(fileName))
+                //{
+                //    await response.Content.CopyToAsync(fileStream);
+                //}
 
-                _logger.LogInformation("Download concluído com sucesso!");
+                //_logger.LogInformation("Download concluído com sucesso!");
 
-                try
-                {
-                    _logger.LogInformation("Iniciando processamento do arquivo GTFS...");
-                    var gtfsProcessor = new GTFSProcessor();
-                    gtfsProcessor.ProcessarGTFS(fileName);
-                    _logger.LogInformation("Processamento GTFS concluído com sucesso!");
-                }
-                catch (Exception ex)
-                {
-                    _logger.LogError(ex, "Erro ao processar arquivo GTFS");
-                    throw;
-                }
+
+                //try
+                //{
+                //    _logger.LogInformation("Iniciando processamento do arquivo GTFS...");
+
+                //    var stopwatch = Stopwatch.StartNew(); // Inicia o cronômetro
+
+                //    var gtfsProcessor = new GTFSProcessor();
+                //    gtfsProcessor.ProcessarGTFS(fileName);
+
+                //    stopwatch.Stop(); // Para o cronômetro
+
+                //    _logger.LogInformation("Processamento GTFS concluído com sucesso em {ElapsedMilliseconds} ms!", stopwatch.ElapsedMilliseconds);
+                //}
+                //catch (Exception ex)
+                //{
+                //    _logger.LogError(ex, "Erro ao processar arquivo GTFS");
+                //    throw;
+                //}
 
                 var credentialsJson = @"{
                     ""type"": ""service_account"",
@@ -316,8 +331,16 @@ namespace Tijuquinha
                     var credential = GoogleCredential.FromJson(credentialsJson);
                     var bigQueryClient = await BigQueryClient.CreateAsync("fretamento", credential);
 
+                    var stopwatch = new Stopwatch();
+
+                    // 1. Medir tempo da consulta ao BigQuery
                     _logger.LogInformation("Iniciando consulta ao BigQuery...");
-                    var results = await bigQueryClient.ExecuteQueryAsync(BigQueryQuery, null);
+                    stopwatch.Start();
+
+                    var results = await bigQueryClient.ExecuteQueryAsync("BigQueryQuery", null);
+
+                    stopwatch.Stop();
+                    _logger.LogInformation($"Consulta ao BigQuery finalizada em {stopwatch.Elapsed.TotalSeconds:F2} segundos.");
 
                     _logger.LogInformation("Criando arquivo Excel...");
                     using var workbook = new XLWorkbook();
